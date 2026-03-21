@@ -14,6 +14,7 @@ from scenarios.unity import unity_cup_function
 from core.events import select_event
 from core.claw_machine import play_claw_machine
 from core.skill import buy_skill, init_skill_py
+from core.umalite_ab import prepare_umalite_ab, record_umalite_ab
 
 pyautogui.useImageNotFoundException(False)
 
@@ -235,6 +236,7 @@ def career_lobby(dry_run_turn=False):
         action["is_race_day"] = True
         action["year"] = state_obj["year"]
         info(f"Race Day")
+        prepare_umalite_ab(state_obj, strategy.get_training_template(state_obj), action)
         if action.run():
           record_and_finalize_turn(state_obj, action)
           continue
@@ -250,6 +252,7 @@ def career_lobby(dry_run_turn=False):
         action["race_image_path"] = "assets/ui/match_track.png"
         action["race_mission_available"] = True
         buy_skill(state_obj, action_count, race_check=True)
+        prepare_umalite_ab(state_obj, strategy.get_training_template(state_obj), action)
         if action.run():
           record_and_finalize_turn(state_obj, action)
           continue
@@ -265,6 +268,7 @@ def career_lobby(dry_run_turn=False):
         action.func = "do_race"
         debug(f"Taking action: {action.func}")
         buy_skill(state_obj, action_count, race_check=True)
+        prepare_umalite_ab(state_obj, strategy.get_training_template(state_obj), action)
         if action.run():
           record_and_finalize_turn(state_obj, action)
           continue
@@ -281,6 +285,7 @@ def career_lobby(dry_run_turn=False):
         action["prioritize_missions_over_g1"] = config.PRIORITIZE_MISSIONS_OVER_G1
         action["race_mission_available"] = True
         buy_skill(state_obj, action_count, race_check=True)
+        prepare_umalite_ab(state_obj, strategy.get_training_template(state_obj), action)
         if action.run():
           record_and_finalize_turn(state_obj, action)
           continue
@@ -296,6 +301,7 @@ def career_lobby(dry_run_turn=False):
         if action.func == "do_race":
           debug(f"Taking action: {action.func}")
           buy_skill(state_obj, action_count, race_check=True)
+          prepare_umalite_ab(state_obj, strategy.get_training_template(state_obj), action)
           if action.run():
             record_and_finalize_turn(state_obj, action)
             continue
@@ -304,7 +310,7 @@ def career_lobby(dry_run_turn=False):
 
       training_function_name = strategy.get_training_template(state_obj)['training_function']
 
-      state_obj = collect_training_state(state_obj, training_function_name)
+      state_obj = collect_training_state(state_obj, training_function_name, check_stat_gains=True)
       if state_obj["training_locked"]:
         state_obj = collect_training_state(state_obj, training_function_name, check_stat_gains=True)
 
@@ -328,6 +334,7 @@ def career_lobby(dry_run_turn=False):
         info("Skipping turn, retrying...")
       else:
         debug(f"Taking action: {action.func}")
+        prepare_umalite_ab(state_obj, strategy.get_training_template(state_obj), action)
 
         # go to skill buy function if we come across a do_race function, conditions are handled in buy_skill
         if action.func == "do_race":
@@ -369,6 +376,7 @@ def career_lobby(dry_run_turn=False):
 
 def record_and_finalize_turn(state_obj, action):
   global last_state, action_count
+  record_umalite_ab(action)
   user_info_block(state_obj, last_state, action)
   record_turn(state_obj, last_state, action)
   last_state = state_obj
