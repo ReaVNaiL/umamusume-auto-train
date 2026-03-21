@@ -14,7 +14,7 @@ from scenarios.unity import unity_cup_function
 from core.events import select_event
 from core.claw_machine import play_claw_machine
 from core.skill import buy_skill, init_skill_py
-from core.umalite_ab import prepare_umalite_ab, record_umalite_ab
+from core.umalite_ab import prepare_umalite_ab, record_umalite_ab, start_umalite_ab_career
 
 pyautogui.useImageNotFoundException(False)
 
@@ -100,6 +100,7 @@ def career_lobby(dry_run_turn=False):
   init_adb()
   init_skill_py()
   reset_progress_tracking()
+  start_umalite_ab_career()
   last_state = CleanDefaultDict()
   try:
     while bot.is_bot_running:

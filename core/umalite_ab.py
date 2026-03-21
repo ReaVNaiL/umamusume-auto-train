@@ -17,6 +17,8 @@ from utils import log as log_module
 from utils.log import error, info, warning
 
 AB_RECORD_KEY = "umalite_ab"
+_career_id: str | None = None
+_career_log_path: str | None = None
 
 
 def _action_options(action: Any) -> dict[str, Any]:
@@ -117,6 +119,33 @@ def _log_dir() -> str:
     return os.path.join(os.getcwd(), "logs")
 
 
+def _career_dir() -> str:
+    return os.path.join(_log_dir(), "umalite_ab")
+
+
+def _new_career_id() -> str:
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    millis = int((time.time() % 1) * 1000)
+    return f"career_{timestamp}_{millis:03d}"
+
+
+def start_umalite_ab_career() -> str:
+    global _career_id, _career_log_path
+
+    _career_id = _new_career_id()
+    os.makedirs(_career_dir(), exist_ok=True)
+    _career_log_path = os.path.join(_career_dir(), f"{_career_id}.jsonl")
+    return _career_id
+
+
+def _ensure_career_log() -> tuple[str, str]:
+    global _career_id, _career_log_path
+
+    if _career_id is None or _career_log_path is None:
+        start_umalite_ab_career()
+    return _career_id, _career_log_path
+
+
 def prepare_umalite_ab(
     state: dict[str, Any],
     training_template: dict[str, Any],
@@ -140,6 +169,7 @@ def prepare_umalite_ab(
 
         record = {
             "timestamp": time.time(),
+            "career_id": _ensure_career_log()[0],
             "year": state.get("year", ""),
             "turn_index": state.get("turn", -1),
             "energy": state.get("energy_level", 0),
@@ -200,7 +230,7 @@ def record_umalite_ab(action: Any) -> None:
         record["legacy_selected_action_id"] != executed_action_id
     )
 
-    log_dir = _log_dir()
-    os.makedirs(log_dir, exist_ok=True)
-    with open(os.path.join(log_dir, "umalite_ab_test.jsonl"), "a", encoding="utf-8") as handle:
+    _, log_path = _ensure_career_log()
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, "a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, default=str) + "\n")
