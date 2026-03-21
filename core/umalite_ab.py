@@ -8,6 +8,7 @@ from typing import Any
 import utils.constants as constants
 from core.umalite_adapter import (
     _get_scenario_name,
+    _scheduled_race_for,
     derive_checkpoint,
     evaluate_with_umalite,
     normalize_state,
@@ -25,6 +26,15 @@ def _action_options(action: Any) -> dict[str, Any]:
     return getattr(action, "options", {})
 
 
+def _scheduled_race_action_id(year_string: str | None) -> str | None:
+    if not year_string:
+        return None
+    race_name = _scheduled_race_for(year_string)
+    if race_name:
+        return f"race_{race_name}"
+    return None
+
+
 def _action_id(action: Any) -> str:
     func = getattr(action, "func", None)
     options = _action_options(action)
@@ -35,10 +45,13 @@ def _action_id(action: Any) -> str:
         race_name = options.get("race_name")
         if race_name and race_name not in ("", "any"):
             return f"race_{race_name}"
+        if options.get("is_race_day"):
+            scheduled_race_id = _scheduled_race_action_id(options.get("year"))
+            if scheduled_race_id:
+                return scheduled_race_id
+            return "race_day"
         if options.get("race_mission_available"):
             return "race_mission"
-        if options.get("is_race_day"):
-            return "race_day"
         return "race_any"
     if func == "do_rest":
         return "rest"
@@ -125,8 +138,8 @@ def _career_dir() -> str:
 
 def _new_career_id() -> str:
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    millis = int((time.time() % 1) * 1000)
-    return f"career_{timestamp}_{millis:03d}"
+    suffix = time.time_ns() % 1_000_000_000
+    return f"career_{timestamp}_{suffix:09d}"
 
 
 def start_umalite_ab_career() -> str:
@@ -144,6 +157,14 @@ def _ensure_career_log() -> tuple[str, str]:
     if _career_id is None or _career_log_path is None:
         start_umalite_ab_career()
     return _career_id, _career_log_path
+
+
+def _match_marker(exact_match: bool, family_match: bool) -> str:
+    if exact_match:
+        return "MATCH"
+    if family_match:
+        return "FAMILY_MATCH"
+    return "MISMATCH"
 
 
 def prepare_umalite_ab(
@@ -201,7 +222,7 @@ def prepare_umalite_ab(
 
         _action_options(action)[AB_RECORD_KEY] = record
 
-        selected_marker = "MATCH" if selected_exact_match else "MISMATCH"
+        selected_marker = _match_marker(selected_exact_match, selected_family_match)
         info(f"[UmaLite A/B] {selected_marker} | Selected: {selected_action_id}")
         info(
             f"  > UmaLite Best: {umalite_action_id} ({result.best.score:.2f})"
